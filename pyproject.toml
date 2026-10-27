@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lost-python-api"
+version = "0.2.0"
+description = "Python API for the LOST open-source star tracker: image generation and the star-tracking pipeline"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+# Faster PNG decoding and numpy arrays for images.
+images = ["numpy>=1.22", "pillow>=9"]
+
+[project.urls]
+Homepage = "https://github.com/UWCubeSat/lost"
+
+[tool.setuptools]
+package-dir = { "" = "python" }
+
+[tool.setuptools.packages.find]
+where = ["python"]
+include = ["lost_api*"]

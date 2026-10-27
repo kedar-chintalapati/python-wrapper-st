@@ -114,3 +114,11 @@ pyramid-incorrect.dat
 
 # Nix
 result
+
+# Python API (the *.py rule above is for scratch scripts in the repo root)
+!/python/**/*.py
+__pycache__/
+*.egg-info/
+/build/
+.venv/
+/example-output/
