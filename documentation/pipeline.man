@@ -235,6 +235,12 @@ Perform \fInum-samples\fP many samples per pixel when generating images. Effecti
 \fB--generate-seed\fP \fIseed\fP
 An integer seed to pass to the random number generator used during image generation.
 
+.TP
+\fB--generate-interesting-threshold\fP \fIphotons\fP
+When rendering a star, pixels that the star would contribute \fIphotons\fP or fewer photons to are
+skipped. Lower values render the faint outer halo of very bright or widely spread stars at the cost
+of speed. Must be positive. Default 0.05.
+
 .SH COMPARATOR OPTIONS
 
 The options that speak of an "expected" something will only work on generated images. In a generated
@@ -281,7 +287,8 @@ identification was also performed, print which catalog star each centroid was id
 input is from a generated image, also print the expected id for each centroid (note that there can
 sometimes be multiple acceptable star-ids for a star, if it's within the centroid comparison
 threshold of multiple catalog stars. Usually setting --min-separation sufficiently high prevents
-this). Defaults to stdout.
+this). If no centroid algo was provided but star identification ran on a generated image's input
+centroids, prints those input centroids with the identified catalog stars. Defaults to stdout.
 
 .TP
 \fB--print-input-centroids\fP [\fIpath\fP]

@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <map>
 #include <chrono>
+#include <limits>
 
 #include "attitude-estimators.hpp"
 #include "attitude-utils.hpp"
@@ -45,6 +46,12 @@ UserSpecifiedOutputStream::UserSpecifiedOutputStream(std::string filePath, bool 
         fs->open(filePath, std::fstream::out);
         stream = fs;
         isFstream = true;
+    }
+
+    if (!isBinary) {
+        // the default of 6 significant digits truncates sub-pixel centroids and sub-arcsecond
+        // attitudes, which matters to scripts that parse these outputs.
+        stream->precision(std::numeric_limits<decimal>::digits10);
     }
 }
 
@@ -502,11 +509,15 @@ GeneratedPipelineInput::GeneratedPipelineInput(const Catalog &catalog,
                                                int falseStarMinMagnitude,
                                                int falseStarMaxMagnitude,
                                                int cutoffMag,
-                                               decimal perturbationStddev)
+                                               decimal perturbationStddev,
+                                               // pixels expected to receive this many photons or
+                                               // fewer from a star are not simulated for it.
+                                               decimal interestingThreshold)
     : camera(camera), attitude(attitude), catalog(catalog) {
 
     assert(falseStarMaxMagnitude <= falseStarMinMagnitude);
     assert(perturbationStddev >= DECIMAL(0.0));
+    assert(interestingThreshold > DECIMAL(0.0));
 
     image.width = camera.XResolution();
     image.height = camera.YResolution();
@@ -565,8 +576,6 @@ GeneratedPipelineInput::GeneratedPipelineInput(const Catalog &catalog,
             }
             // radiant intensity, in photons per time unit per pixel, at the center of the star.
             decimal peakBrightnessPerTime = zeroMagPeakPhotonDensity * MagToBrightness(catalogStar.magnitude);
-            decimal interestingThreshold = DECIMAL(0.05); // we don't need to check pixels that are expected to
-                                               // receive this many photons or fewer.
             // inverse of the function defining the Gaussian distribution: Find out how far from the
             // mean we'll have to go until the number of photons is less than interestingThreshold
             decimal radius = DECIMAL_CEIL(DECIMAL_SQRT(-DECIMAL_LOG(interestingThreshold/peakBrightnessPerTime/exposureTime)*2*DECIMAL_M_PI*starSpreadStdDev*starSpreadStdDev));
@@ -790,7 +799,8 @@ PipelineInputList GetGeneratedPipelineInput(const PipelineOptions &values) {
                 (values.generateFalseMinMag * 100),
                 (values.generateFalseMaxMag * 100),
                 (values.generateCutoffMag * 100),
-                values.generatePerturbationStddev);
+                values.generatePerturbationStddev,
+                values.generateInterestingThreshold);
 
             result.push_back(std::unique_ptr<PipelineInput>(curr));
 
@@ -1366,11 +1376,14 @@ static void PipelineComparatorPrintActualCentroids(std::ostream &os,
                                                    const std::vector<PipelineOutput> &actual,
                                                    const PipelineOptions &values) {
     assert(actual.size() > 0);
-    assert(actual[0].stars);
+    assert(actual.size() == expected.size());
 
+    // When no centroid algorithm ran, star-id ran on the input centroids, so print those along
+    // with the IDs it assigned.
     std::vector<Stars> actualStarses;
-    for (const auto &output : actual) {
-        actualStarses.push_back(*output.stars);
+    for (int i = 0; i < (int)actual.size(); i++) {
+        assert(actual[i].stars || expected[i]->InputStars());
+        actualStarses.push_back(actual[i].stars ? *actual[i].stars : *expected[i]->InputStars());
     }
     PrintCentroids("actual",
                    os,
@@ -1380,7 +1393,7 @@ static void PipelineComparatorPrintActualCentroids(std::ostream &os,
 
     if (expected.size() == 1 && expected[0]->ExpectedStars() && expected[0]->ExpectedStarIds()) {
         // also print expected ID of each one
-        const Stars &actualStars = *actual[0].stars;
+        const Stars &actualStars = actualStarses[0];
         const Stars &expectedStars = *expected[0]->ExpectedStars();
         std::multimap<int, int> actualToExpectedCentroids = FindClosestCentroids(values.centroidCompareThreshold, actualStars, expectedStars);
         for (int i = 0; i < (int)actualStars.size(); i++) {
@@ -1397,7 +1410,7 @@ static void PipelineComparatorPrintActualCentroids(std::ostream &os,
                     if (starId.starIndex == expectedCentroidIndex) {
                         assert(!foundIt);
                         int expectedName = expected[0]->GetCatalog()[starId.catalogIndex].name;
-                        std::cout << "actual_centroid_" << i << "_expected_id_" << j << " " << expectedName << std::endl;
+                        os << "actual_centroid_" << i << "_expected_id_" << j << " " << expectedName << std::endl;
                         foundIt = true;
                     }
                 }
@@ -1754,8 +1767,8 @@ void PipelineComparison(const PipelineInputList &expected,
                               PipelineComparatorPrintInputCentroids, values.printInputCentroids, false);
     }
     if (values.printActualCentroids != "") {
-        LOST_PIPELINE_COMPARE(actual[0].stars,
-                              "--print-actual-centroids requires at least 1 output image, and for centroids to be available on the output images. " + std::to_string(actual.size()) + " many output images were provided.",
+        LOST_PIPELINE_COMPARE(actual[0].stars || (actual[0].starIds && expected[0]->InputStars()),
+                              "--print-actual-centroids requires at least 1 output image, and for centroids (or star IDs of input centroids) to be available on the output images. " + std::to_string(actual.size()) + " many output images were provided.",
                               PipelineComparatorPrintActualCentroids, values.printActualCentroids, false);
     }
     if (values.plotCentroidIndices != "") {

@@ -133,7 +133,8 @@ public:
                            bool shotNoise, int oversampling,
                            int numFalseStars, int falseMinMagnitude, int falseMaxMagnitude,
                            int cutoffMag,
-                           decimal perturbationStddev);
+                           decimal perturbationStddev,
+                           decimal interestingThreshold = DECIMAL(0.05));
 
 
     const Image *InputImage() const override { return &image; };

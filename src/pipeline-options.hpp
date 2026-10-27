@@ -80,3 +80,4 @@ LOST_CLI_OPTION("generate-perturb-centroids"  , decimal , generatePerturbationSt
 LOST_CLI_OPTION("generate-cutoff-mag"         , decimal , generateCutoffMag         , 6.0   , STR_TO_DECIMAL(optarg)    , kNoDefaultArgument)
 LOST_CLI_OPTION("generate-seed"               , int     , generateSeed              , 394859, atoi(optarg)    , kNoDefaultArgument)
 LOST_CLI_OPTION("generate-time-based-seed"    , bool    , timeSeed                  , false , atobool(optarg) , true)
+LOST_CLI_OPTION("generate-interesting-threshold", decimal, generateInterestingThreshold, 0.05, STR_TO_DECIMAL(optarg), kNoDefaultArgument)
