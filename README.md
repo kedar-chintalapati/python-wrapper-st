@@ -17,18 +17,28 @@ identification, attitude estimation) on generated or real images.
 
 Needs Linux or WSL with Python 3.10+.
 
+On WSL, clone into your Linux home folder (`~`), not a Windows folder under `/mnt/c`. WSL reads and
+writes Windows folders very slowly: there, creating the venv alone can take several minutes and looks
+stuck, and interrupting it leaves a broken venv.
+
 ```bash
 sudo apt install g++ make groff xxd libcairo2-dev libeigen3-dev python3-venv
+cd ~
 git clone https://github.com/kedar-chintalapati/python-wrapper-st.git
 cd python-wrapper-st
-make release                       # builds ./lost
-python3 -m venv .venv              # a Python environment for this repo
+make release                              # builds ./lost
+python3 -m venv .venv                     # a Python environment for this repo
 source .venv/bin/activate
-pip install -e '.[images]'         # installs lost_api, plus numpy and Pillow
+python -m pip install -e '.[images]'      # installs lost_api, plus numpy and Pillow
 ```
 
 `[images]` is optional. Without it the API still works and images come back as `GrayImage` objects
 instead of numpy arrays.
+
+If the install fails with `externally-managed-environment`, pip ran outside the venv. Check that
+`which python` prints a path ending in `python-wrapper-st/.venv/bin/python`. If it doesn't, run
+`source .venv/bin/activate`. If the venv itself is broken, delete it with `rm -rf .venv` and repeat
+the last three commands.
 
 ## Writing and running a script
 
