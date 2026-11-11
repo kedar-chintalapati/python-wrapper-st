@@ -128,6 +128,50 @@ class FakeBinaryTests(unittest.TestCase):
         self.assertTrue((self.dir / "keep").is_dir())
 
 
+class BundledBinaryTests(unittest.TestCase):
+    """Wheels ship lost_api/_bundled; check where it ranks among the other locations."""
+
+    def setUp(self) -> None:
+        import lost_api.binary as binary_module
+
+        self.module = binary_module
+        self.dir = Path(tempfile.mkdtemp(prefix="lost_api_bundle_"))
+        self.bundle = self.dir / "_bundled"
+        self.bundle.mkdir()
+        for name in ("lost", "bright-star-catalog.tsv"):
+            (self.bundle / name).write_text("x", encoding="utf-8")
+        self.repo = self.dir / "repo"
+        (self.repo / "src").mkdir(parents=True)
+        for name in ("Makefile", "src/main.cpp", "lost", "bright-star-catalog.tsv"):
+            (self.repo / name).write_text("x", encoding="utf-8")
+        self.original = binary_module.BUNDLED_DIR
+        binary_module.BUNDLED_DIR = self.bundle
+        self.env = {k: os.environ.pop(k) for k in ("LOST_BINARY", "LOST_REPO_ROOT", "LOST_BSC_PATH")
+                    if k in os.environ}
+
+    def tearDown(self) -> None:
+        self.module.BUNDLED_DIR = self.original
+        os.environ.update(self.env)
+
+    def test_bundled_is_preferred_over_the_containing_checkout(self) -> None:
+        binary = LostBinary()
+        self.assertEqual(binary.path, self.bundle / "lost")
+        self.assertEqual(binary.catalog_path, self.bundle / "bright-star-catalog.tsv")
+        self.assertTrue(binary.is_bundled)
+
+    def test_explicit_choices_win_over_bundled(self) -> None:
+        explicit_repo = LostBinary(repo_root=self.repo)
+        self.assertEqual(explicit_repo.path, self.repo / "lost")
+        self.assertEqual(explicit_repo.catalog_path, self.repo / "bright-star-catalog.tsv")
+        self.assertFalse(explicit_repo.is_bundled)
+        self.assertEqual(LostBinary(self.repo / "lost").path, self.repo / "lost")
+        os.environ["LOST_BINARY"] = str(self.repo / "lost")
+        try:
+            self.assertEqual(LostBinary().path, self.repo / "lost")
+        finally:
+            del os.environ["LOST_BINARY"]
+
+
 class StageValidationTests(unittest.TestCase):
     """These are rejected before LOST is ever started, so no binary is needed."""
 

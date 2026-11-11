@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=68", "wheel", "patchelf>=0.17; sys_platform == 'linux'"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "lost-python-api"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Python API for the LOST open-source star tracker: image generation and the star-tracking pipeline"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,3 +24,25 @@ package-dir = { "" = "python" }
 [tool.setuptools.packages.find]
 where = ["python"]
 include = ["lost_api*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "lost_api.__version__" }
+
+# Wheels for every platform: `cibuildwheel --platform linux` locally (needs Docker), or the
+# "Build wheels" GitHub Actions workflow. The wheels are tagged py3-none-<platform>, so one
+# build per platform covers every Python version.
+[tool.cibuildwheel]
+build = "cp312-*"
+skip = "*-musllinux_*"
+before-all = "bash packaging/install-build-deps.sh"
+test-command = "python -m lost_api"
+build-verbosity = 1
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+environment = { LOST_API_BUNDLE_LIBS = "1" }
+
+[tool.cibuildwheel.macos]
+# delocate (cibuildwheel's default macOS repair step) bundles the Homebrew libraries.
+environment = { CXXFLAGS = "-I$(brew --prefix)/include", LDFLAGS = "-L$(brew --prefix)/lib", MACOSX_DEPLOYMENT_TARGET = "$(sw_vers -productVersion | cut -d. -f1).0" }

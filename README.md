@@ -6,16 +6,34 @@ identification, attitude estimation) on generated or real images.
 
 ## How it works
 
-- LOST is compiled once into a single program, `./lost`.
+- LOST is compiled into a single program, `lost`. The prebuilt wheel already contains it, along with
+  the star catalog and the libraries it needs.
 - Each Python call builds a `lost` command from your settings, runs it, and reads LOST's output files
   back into Python objects. You never call C++ directly.
-- You only recompile when the C++ code in `src/` changes. Python changes take effect immediately.
 
 [COMMANDS.md](COMMANDS.md) lists the exact `lost` command behind each Python function.
 
-## Setup
+## Install
 
-Needs Linux or WSL with Python 3.10+.
+Needs Python 3.10+ on Linux or macOS. On Windows, use WSL.
+
+### Option 1: prebuilt wheel (no compiling)
+
+A wheel is a single `.whl` file. Install it into a Python environment:
+
+```bash
+python3 -m venv ~/lost-env
+source ~/lost-env/bin/activate
+python -m pip install 'lost_python_api-0.3.0-py3-none-manylinux_2_39_x86_64.whl[images]'
+python -m lost_api      # shows the bundled lost and runs a self-test
+```
+
+Use the wheel whose name matches your machine: `manylinux_..._x86_64` for Linux or WSL on Intel/AMD,
+`manylinux_..._aarch64` for Linux on ARM, `macosx_..._arm64` for Apple Silicon Macs and
+`macosx_..._x86_64` for Intel Macs. The number after `manylinux_` is the oldest glibc it supports:
+`2_39` means Ubuntu 24.04 or newer, `2_28` covers nearly all current Linux systems.
+
+### Option 2: from source (to change LOST or the API)
 
 On WSL, clone into your Linux home folder (`~`), not a Windows folder under `/mnt/c`. WSL reads and
 writes Windows folders very slowly: there, creating the venv alone can take several minutes and looks
@@ -40,14 +58,16 @@ If the install fails with `externally-managed-environment`, pip ran outside the 
 `source .venv/bin/activate`. If the venv itself is broken, delete it with `rm -rf .venv` and repeat
 the last three commands.
 
+With a source install, rerun `make release` after changing C++ code in `src/`. Python changes take
+effect immediately.
+
 ## Writing and running a script
 
 1. Save your script anywhere, for example `~/star-tests/run.py`. It does not need to be inside this
-   repo. `pip install -e` makes `lost_api` importable everywhere and it finds `./lost` in this repo
-   by itself.
-2. Open a terminal and activate the environment (once per terminal):
+   repo. Once installed, `lost_api` is importable from anywhere and finds `lost` by itself.
+2. Open a terminal and activate the environment you installed into (once per terminal), for example:
    ```bash
-   source ~/python-wrapper-st/.venv/bin/activate
+   source ~/lost-env/bin/activate
    ```
 3. Run it:
    ```bash
@@ -339,3 +359,24 @@ This repo is LOST plus the `python/` folder and a few small C++ changes the API 
 ```bash
 python -m unittest discover -s python/tests -t python/tests
 ```
+
+The tests use whichever `lost_api` is installed, so they also check an installed wheel.
+
+## Building wheels
+
+From a source install, with the venv active:
+
+```bash
+python -m pip install build patchelf auditwheel cibuildwheel
+```
+
+| Goal | Command | Output |
+|---|---|---|
+| Wheel for Linux systems at least as new as this one | `LOST_API_BUNDLE_LIBS=1 python -m pip wheel . --no-deps -w dist` then `auditwheel repair dist/*.whl -w wheelhouse` | `wheelhouse/*.whl` |
+| Wheel for nearly all Linux systems (needs Docker) | `cibuildwheel --platform linux --output-dir wheelhouse` | `wheelhouse/*.whl` |
+| Wheels for Linux and macOS, Intel and ARM | Run the "Build wheels" workflow from the GitHub Actions tab | downloadable artifacts |
+| Source package (compiles LOST when installed) | `python -m build --sdist` | `dist/*.tar.gz` |
+
+Building a wheel compiles LOST from this checkout. `LOST_API_BUNDLE_LIBS=1` copies its shared
+libraries into the wheel so the target machine does not need cairo. Send the `.whl` file to someone
+and they follow Option 1. To publish later, upload the same files with `twine upload`.

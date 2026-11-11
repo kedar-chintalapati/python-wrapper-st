@@ -19,15 +19,15 @@ from .errors import (
 
 CATALOG_FILENAME = "bright-star-catalog.tsv"
 
+# Wheels ship a prebuilt executable, its shared libraries and the catalog here.
+BUNDLED_DIR = Path(__file__).resolve().parent / "_bundled"
+
 
 def _looks_like_repo(path: Path) -> bool:
     return (path / "Makefile").is_file() and (path / "src" / "main.cpp").is_file()
 
 
-def _default_repo_root() -> Path | None:
-    env = os.environ.get("LOST_REPO_ROOT")
-    if env:
-        return Path(env).expanduser().resolve()
+def _checkout_root() -> Path | None:
     # python/lost_api/binary.py -> repository root, when used from a source checkout
     candidate = Path(__file__).resolve().parents[2]
     return candidate if _looks_like_repo(candidate) else None
@@ -38,12 +38,12 @@ class LostBinary:
 
     Resolution order:
 
-    * executable: ``path`` argument, ``$LOST_BINARY``, ``<repo_root>/lost`` (built on demand when
-      ``auto_build`` is true), then ``lost`` on ``$PATH``;
-    * repository: ``repo_root`` argument, ``$LOST_REPO_ROOT``, then the checkout containing this
-      package;
-    * catalog: ``catalog_path`` argument, ``$LOST_BSC_PATH``, ``<repo_root>/bright-star-catalog.tsv``,
-      then the same file next to the executable.
+    * executable: ``path`` argument, ``$LOST_BINARY``, an explicitly chosen repository's ``lost``,
+      the copy bundled in an installed wheel, the ``lost`` of the checkout containing this package
+      (built on demand when ``auto_build`` is true), then ``lost`` on ``$PATH``;
+    * repository (explicit): ``repo_root`` argument, then ``$LOST_REPO_ROOT``;
+    * catalog: ``catalog_path`` argument, ``$LOST_BSC_PATH``, then the catalog that belongs to the
+      chosen executable (bundled or repository), then the same file next to the executable.
 
     The catalog is always passed to LOST through ``LOST_BSC_PATH``, so runs do not depend on the
     working directory.
@@ -58,7 +58,10 @@ class LostBinary:
         auto_build: bool = True,
     ) -> None:
         self._explicit_path = Path(path).expanduser().resolve() if path else None
-        self.repo_root = Path(repo_root).expanduser().resolve() if repo_root else _default_repo_root()
+        explicit_repo = repo_root or os.environ.get("LOST_REPO_ROOT")
+        self._repo_is_explicit = bool(explicit_repo)
+        self.repo_root = (Path(explicit_repo).expanduser().resolve() if explicit_repo
+                          else _checkout_root())
         self._explicit_catalog = Path(catalog_path).expanduser().resolve() if catalog_path else None
         self.auto_build = auto_build
         self._lock = threading.Lock()
@@ -83,6 +86,9 @@ class LostBinary:
             if not env_path.is_file():
                 raise LostBinaryNotFoundError(f"$LOST_BINARY points to a missing file: {env_path}")
             return env_path
+        bundled = BUNDLED_DIR / "lost"
+        if bundled.is_file() and not self._repo_is_explicit:
+            return bundled
         if self.repo_root is not None:
             repo_binary = self.repo_root / "lost"
             if repo_binary.is_file():
@@ -107,9 +113,12 @@ class LostBinary:
         elif os.environ.get("LOST_BSC_PATH"):
             candidates.append(Path(os.environ["LOST_BSC_PATH"]).expanduser().resolve())
         else:
-            if self.repo_root is not None:
+            executable = self.path
+            if executable.parent == BUNDLED_DIR:
+                candidates.append(BUNDLED_DIR / CATALOG_FILENAME)
+            elif self.repo_root is not None:
                 candidates.append(self.repo_root / CATALOG_FILENAME)
-            candidates.append(self.path.parent / CATALOG_FILENAME)
+            candidates.append(executable.parent / CATALOG_FILENAME)
         for candidate in candidates:
             if candidate.is_file():
                 return candidate
@@ -125,6 +134,11 @@ class LostBinary:
         if self._sha256 is None:
             self._sha256 = _file_sha256(self.path)
         return self._sha256
+
+    @property
+    def is_bundled(self) -> bool:
+        """True when the executable is the prebuilt copy shipped inside an installed wheel."""
+        return self.path.parent == BUNDLED_DIR
 
     # -- building ---------------------------------------------------------------------------
 

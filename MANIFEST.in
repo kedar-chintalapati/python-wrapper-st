@@ -1,0 +1,9 @@
+# Sources a source distribution needs to compile LOST when no prebuilt wheel fits.
+include Makefile bright-star-catalog.tsv README.md COMMANDS.md setup.py
+graft src
+graft vendor
+include documentation/*.man
+include packaging/*.sh
+graft python/tests
+graft python/examples
+global-exclude *.o *.d *.pyc __pycache__ man-*.h
