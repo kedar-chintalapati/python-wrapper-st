@@ -138,11 +138,11 @@ class BundledBinaryTests(unittest.TestCase):
         self.dir = Path(tempfile.mkdtemp(prefix="lost_api_bundle_"))
         self.bundle = self.dir / "_bundled"
         self.bundle.mkdir()
-        for name in ("lost", "bright-star-catalog.tsv"):
+        for name in (binary_module.EXECUTABLE, "bright-star-catalog.tsv"):
             (self.bundle / name).write_text("x", encoding="utf-8")
         self.repo = self.dir / "repo"
         (self.repo / "src").mkdir(parents=True)
-        for name in ("Makefile", "src/main.cpp", "lost", "bright-star-catalog.tsv"):
+        for name in ("Makefile", "src/main.cpp", binary_module.EXECUTABLE, "bright-star-catalog.tsv"):
             (self.repo / name).write_text("x", encoding="utf-8")
         self.original = binary_module.BUNDLED_DIR
         binary_module.BUNDLED_DIR = self.bundle
@@ -155,21 +155,34 @@ class BundledBinaryTests(unittest.TestCase):
 
     def test_bundled_is_preferred_over_the_containing_checkout(self) -> None:
         binary = LostBinary()
-        self.assertEqual(binary.path, self.bundle / "lost")
+        self.assertEqual(binary.path, self.bundle / self.module.EXECUTABLE)
         self.assertEqual(binary.catalog_path, self.bundle / "bright-star-catalog.tsv")
         self.assertTrue(binary.is_bundled)
 
     def test_explicit_choices_win_over_bundled(self) -> None:
         explicit_repo = LostBinary(repo_root=self.repo)
-        self.assertEqual(explicit_repo.path, self.repo / "lost")
+        self.assertEqual(explicit_repo.path, self.repo / self.module.EXECUTABLE)
         self.assertEqual(explicit_repo.catalog_path, self.repo / "bright-star-catalog.tsv")
         self.assertFalse(explicit_repo.is_bundled)
-        self.assertEqual(LostBinary(self.repo / "lost").path, self.repo / "lost")
-        os.environ["LOST_BINARY"] = str(self.repo / "lost")
+        self.assertEqual(LostBinary(self.repo / self.module.EXECUTABLE).path, self.repo / self.module.EXECUTABLE)
+        os.environ["LOST_BINARY"] = str(self.repo / self.module.EXECUTABLE)
         try:
-            self.assertEqual(LostBinary().path, self.repo / "lost")
+            self.assertEqual(LostBinary().path, self.repo / self.module.EXECUTABLE)
         finally:
             del os.environ["LOST_BINARY"]
+
+
+class UnsupportedOptionMessageTests(unittest.TestCase):
+    def test_every_platforms_wording(self) -> None:
+        from lost_api.errors import execution_error
+
+        for stderr in ("./lost: unrecognized option '--generate-foo'",          # glibc
+                       "lost: unrecognized option `--generate-foo'",            # BSD / macOS
+                       "C:\\x\\lost.exe: unknown option -- generate-foo"):      # MinGW
+            with self.subTest(stderr):
+                error = execution_error(["lost"], 1, "Illegal flag", stderr)
+                self.assertIsInstance(error, LostUnsupportedOptionError)
+                self.assertEqual(error.option, "generate-foo")
 
 
 class StageValidationTests(unittest.TestCase):

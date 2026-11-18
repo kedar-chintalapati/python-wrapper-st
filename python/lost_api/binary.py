@@ -18,6 +18,7 @@ from .errors import (
 )
 
 CATALOG_FILENAME = "bright-star-catalog.tsv"
+EXECUTABLE = "lost.exe" if os.name == "nt" else "lost"
 
 # Wheels ship a prebuilt executable, its shared libraries and the catalog here.
 BUNDLED_DIR = Path(__file__).resolve().parent / "_bundled"
@@ -86,11 +87,11 @@ class LostBinary:
             if not env_path.is_file():
                 raise LostBinaryNotFoundError(f"$LOST_BINARY points to a missing file: {env_path}")
             return env_path
-        bundled = BUNDLED_DIR / "lost"
+        bundled = BUNDLED_DIR / EXECUTABLE
         if bundled.is_file() and not self._repo_is_explicit:
             return bundled
         if self.repo_root is not None:
-            repo_binary = self.repo_root / "lost"
+            repo_binary = self.repo_root / EXECUTABLE
             if repo_binary.is_file():
                 return repo_binary
             if self.auto_build:
@@ -147,7 +148,7 @@ class LostBinary:
         with self._lock:
             self._build_locked(jobs=jobs)
             self._sha256 = None
-            return self.repo_root / "lost"  # type: ignore[operator]
+            return self.repo_root / EXECUTABLE  # type: ignore[operator]
 
     def _build_locked(self, jobs: int | None = None) -> None:
         if self.repo_root is None or not _looks_like_repo(self.repo_root):
@@ -159,7 +160,7 @@ class LostBinary:
             command, cwd=self.repo_root, capture_output=True, text=True, stdin=subprocess.DEVNULL
         )
         output = completed.stdout + completed.stderr
-        if completed.returncode != 0 or not (self.repo_root / "lost").is_file():
+        if completed.returncode != 0 or not (self.repo_root / EXECUTABLE).is_file():
             tail = "\n".join(output.splitlines()[-25:])
             raise LostBuildError(
                 f"`{' '.join(command)}` failed in {self.repo_root}. If an earlier debug build left "

@@ -3,7 +3,7 @@ include Makefile bright-star-catalog.tsv README.md COMMANDS.md setup.py
 graft src
 graft vendor
 include documentation/*.man
-include packaging/*.sh
+include packaging/*.sh packaging/*.md
 graft python/tests
 graft python/examples
 global-exclude *.o *.d *.pyc __pycache__ man-*.h

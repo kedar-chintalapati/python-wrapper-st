@@ -15,14 +15,18 @@ _DIAGNOSTIC_PATTERNS = (
     re.compile(r"^ERROR:.*", re.MULTILINE),
     re.compile(r"^Illegal .*", re.MULTILINE),
     re.compile(r"^Error .*", re.MULTILINE),
-    re.compile(r"^.*unrecognized option.*", re.MULTILINE),
+    re.compile(r"^.*(?:unrecognized|unknown) option.*", re.MULTILINE),
     re.compile(r"^.*requires an argument.*", re.MULTILINE),
     re.compile(r"^.*Assertion .* failed.*", re.MULTILINE),
     re.compile(r"^.*AddressSanitizer.*", re.MULTILINE),
     re.compile(r"^Can't convert .*", re.MULTILINE),
     re.compile(r"^PNG Read status: (?!success).*", re.MULTILINE | re.IGNORECASE),
 )
-_UNRECOGNIZED_OPTION = re.compile(r"unrecognized option '--([^'=]+)")
+# getopt's wording differs: glibc "unrecognized option '--x'", BSD/macOS "unrecognized option
+# `--x'", MinGW on Windows "unknown option -- x".
+_UNRECOGNIZED_OPTION = re.compile(
+    r"unrecognized option [`']--([^'=]+)'|unknown option -- ([^\s=]+)"
+)
 
 
 class LostError(Exception):
@@ -129,5 +133,6 @@ def execution_error(
     """Build the most specific :class:`LostExecutionError` for a failed run."""
     match = _UNRECOGNIZED_OPTION.search(stderr or "")
     if match:
-        return LostUnsupportedOptionError(match.group(1), command, returncode, stdout, stderr)
+        option = match.group(1) or match.group(2)
+        return LostUnsupportedOptionError(option, command, returncode, stdout, stderr)
     return LostExecutionError(command, returncode, stdout, stderr)

@@ -165,7 +165,7 @@ class StageConfigTests(unittest.TestCase):
 
     def test_star_id_args(self) -> None:
         args = StarIdConfig(algorithm="gv").to_args(Path("/tmp/db.dat"))
-        self.assertEqual(args[:4], ["--database", "/tmp/db.dat", "--star-id-algo", "gv"])
+        self.assertEqual(args[:4], ["--database", str(Path("/tmp/db.dat")), "--star-id-algo", "gv"])
         with self.assertRaises(LostConfigError):
             StarIdConfig(database=42)  # type: ignore[arg-type]
         with self.assertRaises(LostConfigError):
@@ -207,7 +207,7 @@ class FormatValueTests(unittest.TestCase):
     def test_bools_and_paths(self) -> None:
         self.assertEqual(format_value(True), "true")
         self.assertEqual(format_value(False), "false")
-        self.assertEqual(format_value(Path("/a/b")), "/a/b")
+        self.assertEqual(format_value(Path("/a/b")), str(Path("/a/b")))
 
 
 if __name__ == "__main__":

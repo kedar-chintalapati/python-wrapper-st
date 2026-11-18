@@ -5,7 +5,15 @@ places the executable and star catalog in ``lost_api/_bundled``. With ``LOST_API
 Linux, every shared library the executable needs (except the core C library) is copied to
 ``lost_api/_bundled/lib`` and the executable is pointed at those copies, so the wheel runs on
 machines without cairo. Editable installs (``pip install -e .``) skip all of this and use the
-checkout's own ``./lost``. Set ``LOST_API_SKIP_BINARY=1`` to build a pure-Python wheel.
+checkout's own ``./lost``.
+
+Other environment variables:
+
+- ``LOST_API_BUILD_JOBS``: parallel compile jobs (default: number of CPUs).
+- ``LOST_API_PREBUILT_BUNDLE=<dir>``: package an already-built bundle (an executable, its
+  libraries and the catalog) instead of compiling, e.g. a cross-compiled ``lost.exe``.
+- ``LOST_API_PLAT_NAME``: wheel platform tag to use instead of this machine's, e.g. ``win_amd64``.
+- ``LOST_API_SKIP_BINARY=1``: build a pure-Python wheel.
 """
 
 from __future__ import annotations
@@ -45,8 +53,13 @@ class BuildPyWithLost(build_py):
         super().run()
         if getattr(self, "editable_mode", False) or _skip_binary():
             return
-        workdir = Path(self.get_finalized_command("build").build_temp) / "lost-src"
         bundle = Path(self.build_lib) / "lost_api" / "_bundled"
+        prebuilt = os.environ.get("LOST_API_PREBUILT_BUNDLE")
+        if prebuilt:
+            shutil.rmtree(bundle, ignore_errors=True)
+            shutil.copytree(prebuilt, bundle)
+            return
+        workdir = Path(self.get_finalized_command("build").build_temp) / "lost-src"
         build_lost(workdir, bundle)
 
 
@@ -55,6 +68,8 @@ class PlatformWheel(bdist_wheel):
     executable, so one wheel serves every Python 3 version."""
 
     def finalize_options(self) -> None:
+        if os.environ.get("LOST_API_PLAT_NAME"):
+            self.plat_name = os.environ["LOST_API_PLAT_NAME"]
         super().finalize_options()
         self.root_is_pure = _skip_binary()
 
@@ -83,7 +98,7 @@ def build_lost(workdir: Path, bundle: Path) -> None:
     for man in (ROOT / "documentation").glob("*.man"):
         shutil.copy2(man, workdir / "documentation")
 
-    jobs = str(os.cpu_count() or 1)
+    jobs = os.environ.get("LOST_API_BUILD_JOBS") or str(os.cpu_count() or 1)
     print(f"building LOST in {workdir}", flush=True)
     subprocess.run(["make", "release", f"-j{jobs}"], cwd=workdir, check=True)
 

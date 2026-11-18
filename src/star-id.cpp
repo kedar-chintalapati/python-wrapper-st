@@ -10,6 +10,7 @@
 #include "star-id-private.hpp"
 #include "databases.hpp"
 #include "attitude-utils.hpp"
+#include "portability.hpp"
 
 namespace lost {
 

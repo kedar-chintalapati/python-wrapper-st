@@ -582,6 +582,8 @@ def _merge(dicts: Iterable[dict]) -> dict:
 
 
 def _default_cache_dir() -> Path:
+    if os.name == "nt" and os.environ.get("LOCALAPPDATA"):
+        return Path(os.environ["LOCALAPPDATA"]) / "lost_api" / "cache"
     base = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
     return Path(base) / "lost_api"
 

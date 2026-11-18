@@ -55,7 +55,7 @@ from .results import (
 )
 from .runner import LostRunner, LostWarning
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "ATTITUDE_ALGORITHMS",

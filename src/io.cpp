@@ -35,7 +35,11 @@ namespace lost {
 UserSpecifiedOutputStream::UserSpecifiedOutputStream(std::string filePath, bool isBinary) {
     if (isBinary && isatty(fileno(stdout)) && (filePath == "stdout" || filePath == "-")) {
         std::cerr << "WARNING: output contains binary contents. Not printed to terminal." << std::endl;
+#ifdef _WIN32
+        filePath = "NUL";
+#else
         filePath = "/dev/null";
+#endif
     }
 
     if (filePath == "stdout" || filePath == "-") {
@@ -43,7 +47,8 @@ UserSpecifiedOutputStream::UserSpecifiedOutputStream(std::string filePath, bool 
         isFstream = false;
     } else {
         std::fstream *fs = new std::fstream();
-        fs->open(filePath, std::fstream::out);
+        // binary mode stops Windows from turning '\n' bytes in PNGs and databases into "\r\n"
+        fs->open(filePath, isBinary ? std::fstream::out | std::fstream::binary : std::fstream::out);
         stream = fs;
         isFstream = true;
     }

@@ -15,23 +15,38 @@ identification, attitude estimation) on generated or real images.
 
 ## Install
 
-Needs Python 3.10+ on Linux or macOS. On Windows, use WSL.
+Needs Python 3.10+ on Linux, macOS or Windows.
 
 ### Option 1: prebuilt wheel (no compiling)
 
-A wheel is a single `.whl` file. Install it into a Python environment:
+A wheel is a single `.whl` file. Use the one whose name matches your machine:
+
+| Wheel name ends in | For |
+|---|---|
+| `manylinux_2_28_x86_64.whl` | Linux or WSL on Intel/AMD (Ubuntu 20.04+, Debian 11+, RHEL 8+) |
+| `manylinux_2_28_aarch64.whl` | Linux on ARM |
+| `win_amd64.whl` | Windows on Intel/AMD |
+| `macosx_..._arm64.whl`, `macosx_..._x86_64.whl` | Apple Silicon and Intel Macs |
+
+Linux and macOS:
 
 ```bash
 python3 -m venv ~/lost-env
 source ~/lost-env/bin/activate
-python -m pip install 'lost_python_api-0.3.0-py3-none-manylinux_2_39_x86_64.whl[images]'
+python -m pip install 'lost_python_api-0.3.1-py3-none-manylinux_2_28_x86_64.whl[images]'
 python -m lost_api      # shows the bundled lost and runs a self-test
 ```
 
-Use the wheel whose name matches your machine: `manylinux_..._x86_64` for Linux or WSL on Intel/AMD,
-`manylinux_..._aarch64` for Linux on ARM, `macosx_..._arm64` for Apple Silicon Macs and
-`macosx_..._x86_64` for Intel Macs. The number after `manylinux_` is the oldest glibc it supports:
-`2_39` means Ubuntu 24.04 or newer, `2_28` covers nearly all current Linux systems.
+Windows (PowerShell):
+
+```powershell
+py -m venv $HOME\lost-env
+& $HOME\lost-env\Scripts\python.exe -m pip install "lost_python_api-0.3.1-py3-none-win_amd64.whl[images]"
+& $HOME\lost-env\Scripts\python.exe -m lost_api
+```
+
+On Windows, run scripts with `& $HOME\lost-env\Scripts\python.exe run.py` (or activate the environment
+with `$HOME\lost-env\Scripts\Activate.ps1` if PowerShell allows scripts).
 
 ### Option 2: from source (to change LOST or the API)
 
@@ -353,6 +368,8 @@ This repo is LOST plus the `python/` folder and a few small C++ changes the API 
 - `--print-actual-centroids` writes each centroid's expected ID to its file instead of the terminal.
 - `--print-actual-centroids` also works when star ID runs on generated centroids.
 - New option `--generate-interesting-threshold`.
+- Builds on Windows with MinGW: binary outputs are written in binary mode, and
+  `src/portability.hpp` supplies `rand_r`.
 
 ## Tests
 
@@ -372,11 +389,15 @@ python -m pip install build patchelf auditwheel cibuildwheel
 
 | Goal | Command | Output |
 |---|---|---|
-| Wheel for Linux systems at least as new as this one | `LOST_API_BUNDLE_LIBS=1 python -m pip wheel . --no-deps -w dist` then `auditwheel repair dist/*.whl -w wheelhouse` | `wheelhouse/*.whl` |
-| Wheel for nearly all Linux systems (needs Docker) | `cibuildwheel --platform linux --output-dir wheelhouse` | `wheelhouse/*.whl` |
-| Wheels for Linux and macOS, Intel and ARM | Run the "Build wheels" workflow from the GitHub Actions tab | downloadable artifacts |
+| Linux wheel (needs Docker) | `cibuildwheel --platform linux --output-dir wheelhouse` | `wheelhouse/*manylinux_2_28*.whl` |
+| Windows wheel (needs Docker, runs on Linux or WSL) | `bash packaging/build-windows-wheel.sh` | `wheelhouse/*win_amd64.whl` |
+| macOS wheel (on a Mac) | `bash packaging/macos-build-and-test.sh` | `wheelhouse/*macosx*.whl` and a test report |
 | Source package (compiles LOST when installed) | `python -m build --sdist` | `dist/*.tar.gz` |
+| All of the above | Run the "Build wheels" workflow from the GitHub Actions tab | downloadable artifacts |
 
-Building a wheel compiles LOST from this checkout. `LOST_API_BUNDLE_LIBS=1` copies its shared
-libraries into the wheel so the target machine does not need cairo. Send the `.whl` file to someone
-and they follow Option 1. To publish later, upload the same files with `twine upload`.
+Each wheel contains a compiled `lost` and every library it needs, so the target machine needs no
+compiler or cairo. Send the `.whl` file to someone and they follow Option 1. To publish later,
+upload the same files with `twine upload`.
+
+To have a Mac user build and test the macOS wheel, send them the source package (`dist/*.tar.gz`) and
+[packaging/MAC-TESTING.md](packaging/MAC-TESTING.md).

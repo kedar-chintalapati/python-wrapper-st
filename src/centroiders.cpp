@@ -9,6 +9,7 @@
 #include <unordered_set>
 
 #include "decimal.hpp"
+#include "portability.hpp"
 
 namespace lost {
 
