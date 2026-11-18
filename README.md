@@ -19,30 +19,43 @@ Needs Python 3.10+ on Linux, macOS or Windows.
 
 ### Option 1: prebuilt wheel (no compiling)
 
-A wheel is a single `.whl` file. Use the one whose name matches your machine:
+A wheel is a single `.whl` file containing the API, a compiled `lost` and everything it needs. Wheels
+are attached to each [release](https://github.com/kedar-chintalapati/python-wrapper-st/releases).
+The current one is [v0.3.1](https://github.com/kedar-chintalapati/python-wrapper-st/releases/tag/v0.3.1):
 
-| Wheel name ends in | For |
+| Your machine | Wheel |
 |---|---|
-| `manylinux_2_28_x86_64.whl` | Linux or WSL on Intel/AMD (Ubuntu 20.04+, Debian 11+, RHEL 8+) |
-| `manylinux_2_28_aarch64.whl` | Linux on ARM |
-| `win_amd64.whl` | Windows on Intel/AMD |
-| `macosx_..._arm64.whl`, `macosx_..._x86_64.whl` | Apple Silicon and Intel Macs |
+| Linux or WSL, Intel/AMD (Ubuntu 20.04+, Debian 11+, RHEL 8+) | [`lost_python_api-0.3.1-py3-none-manylinux_2_28_x86_64.whl`](https://github.com/kedar-chintalapati/python-wrapper-st/releases/download/v0.3.1/lost_python_api-0.3.1-py3-none-manylinux_2_28_x86_64.whl) |
+| Windows, Intel/AMD | [`lost_python_api-0.3.1-py3-none-win_amd64.whl`](https://github.com/kedar-chintalapati/python-wrapper-st/releases/download/v0.3.1/lost_python_api-0.3.1-py3-none-win_amd64.whl) |
+| macOS, Linux on ARM | No wheel yet. Use Option 2. |
 
-Linux and macOS:
+pip can download and install the wheel in one step. Run these in a terminal.
+
+Linux or WSL:
 
 ```bash
 python3 -m venv ~/lost-env
 source ~/lost-env/bin/activate
-python -m pip install 'lost_python_api-0.3.1-py3-none-manylinux_2_28_x86_64.whl[images]'
-python -m lost_api      # shows the bundled lost and runs a self-test
+python -m pip install "lost-python-api[images] @ https://github.com/kedar-chintalapati/python-wrapper-st/releases/download/v0.3.1/lost_python_api-0.3.1-py3-none-manylinux_2_28_x86_64.whl"
+python -m lost_api
 ```
 
 Windows (PowerShell):
 
 ```powershell
 py -m venv $HOME\lost-env
-& $HOME\lost-env\Scripts\python.exe -m pip install "lost_python_api-0.3.1-py3-none-win_amd64.whl[images]"
+& $HOME\lost-env\Scripts\python.exe -m pip install "lost-python-api[images] @ https://github.com/kedar-chintalapati/python-wrapper-st/releases/download/v0.3.1/lost_python_api-0.3.1-py3-none-win_amd64.whl"
 & $HOME\lost-env\Scripts\python.exe -m lost_api
+```
+
+The first command creates a Python environment in `lost-env` in your home folder. The second
+installs the wheel into it. The last one checks the install and should end with `self-test passed`.
+
+If you already downloaded the `.whl` file (from the table, or one someone sent you), install it from
+wherever you saved it instead. Keep its name unchanged:
+
+```bash
+python -m pip install "$HOME/Downloads/lost_python_api-0.3.1-py3-none-manylinux_2_28_x86_64.whl[images]"
 ```
 
 On Windows, run scripts with `& $HOME\lost-env\Scripts\python.exe run.py` (or activate the environment
@@ -398,6 +411,10 @@ python -m pip install build patchelf auditwheel cibuildwheel
 Each wheel contains a compiled `lost` and every library it needs, so the target machine needs no
 compiler or cairo. Send the `.whl` file to someone and they follow Option 1. To publish later,
 upload the same files with `twine upload`.
+
+To make a release: bump `__version__` in `python/lost_api/__init__.py`, build the files above, run
+`gh release create vX.Y.Z wheelhouse/*.whl dist/*.tar.gz`, and update the version in the links and
+commands under Option 1.
 
 To have a Mac user build and test the macOS wheel, send them the source package (`dist/*.tar.gz`) and
 [packaging/MAC-TESTING.md](packaging/MAC-TESTING.md).
