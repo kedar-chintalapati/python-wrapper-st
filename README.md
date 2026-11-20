@@ -135,7 +135,8 @@ with LostRunner() as lost:
     # 2. Run the star tracker on the same scene and score it against the truth.
     result = lost.run_generated(scene, camera, **stages)
     print("centroids found:", len(result.actual_centroids))
-    print("stars identified:", len(result.identified_stars))
+    print("stars identified:", len(result.identified_stars),
+          f"({result.star_id_comparison.num_incorrect} of them wrong)")
     print("estimated attitude:", result.attitude)
     print("attitude error (deg):", result.attitude_error_deg)
 
@@ -147,26 +148,32 @@ with LostRunner() as lost:
     noise_levels = [0.0, 0.1, 0.2]
     runs = lost.run_generated_many([replace(scene, read_noise_stddev=n) for n in noise_levels],
                                    camera, max_workers=3, **stages)
+    # Generated images know the truth, so wrong identifications can be counted.
     for noise, run in zip(noise_levels, runs):
-        print(f"noise {noise}: {len(run.identified_stars)} stars identified, "
-              f"error {run.attitude_error_deg} deg")
+        wrong = run.star_id_comparison.num_incorrect
+        print(f"noise {noise}: {len(run.identified_stars)} stars identified ({wrong} wrong), "
+              f"attitude error {run.attitude_error_deg} deg")
 ```
 
-Output (shortened):
+Output on Linux (shortened):
 
 ```
 image: /home/you/example-output/raw_input.png
 true attitude: Attitude(ra_deg=88.0, de_deg=7.0, roll_deg=0.0, quaternion=(...))
 stars in frame: 155
 centroids found: 6
-stars identified: 5
+stars identified: 5 (0 of them wrong)
 estimated attitude: Attitude(ra_deg=88.00046, de_deg=6.99366, roll_deg=0.08425, quaternion=(...))
 attitude error (deg): 0.0844
 attitude from the PNG: Attitude(ra_deg=88.00045, de_deg=6.99367, roll_deg=0.08414, quaternion=(...))
-noise 0.0: 33 stars identified, error 0.0054 deg
-noise 0.1: 4 stars identified, error 0.134 deg
-noise 0.2: 0 stars identified, error None deg
+noise 0.0: 33 stars identified (0 wrong), attitude error 0.0054 deg
+noise 0.1: 4 stars identified (0 wrong), attitude error 0.134 deg
+noise 0.2: 0 stars identified (0 wrong), attitude error None deg
 ```
+
+Numbers differ slightly on macOS: its C++ standard library draws different random noise from the
+same seed. Star identification can also return wrong matches on noisy images, which the
+`(... wrong)` count shows.
 
 What happens:
 

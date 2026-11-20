@@ -51,7 +51,7 @@ BINARY = _find_binary()
 class IntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.tmp = Path(tempfile.mkdtemp(prefix="lost_api_it_"))
+        cls.tmp = Path(tempfile.mkdtemp(prefix="lost_api_it_")).resolve()
         cls.runner = LostRunner(BINARY, work_dir=cls.tmp / "work", cache_dir=cls.tmp / "cache")
 
     @classmethod

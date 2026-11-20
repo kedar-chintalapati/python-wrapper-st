@@ -61,7 +61,7 @@ def encode_png(width: int, height: int, samples: bytes, color_type: int, filter_
 
 class PngTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.dir = Path(tempfile.mkdtemp(prefix="lost_api_png_"))
+        self.dir = Path(tempfile.mkdtemp(prefix="lost_api_png_")).resolve()
         self.pixels = bytes((x * 37 + y * 91) % 256 for y in range(5) for x in range(7))
 
     def test_round_trip(self) -> None:

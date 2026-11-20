@@ -27,7 +27,7 @@ from lost_api import (
 @unittest.skipIf(os.name == "nt", "fake executables are shell scripts")
 class FakeBinaryTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.dir = Path(tempfile.mkdtemp(prefix="lost_api_fake_"))
+        self.dir = Path(tempfile.mkdtemp(prefix="lost_api_fake_")).resolve()
         self.catalog = self.dir / "bright-star-catalog.tsv"
         self.catalog.write_text("fake\n", encoding="utf-8")
 
@@ -135,7 +135,7 @@ class BundledBinaryTests(unittest.TestCase):
         import lost_api.binary as binary_module
 
         self.module = binary_module
-        self.dir = Path(tempfile.mkdtemp(prefix="lost_api_bundle_"))
+        self.dir = Path(tempfile.mkdtemp(prefix="lost_api_bundle_")).resolve()
         self.bundle = self.dir / "_bundled"
         self.bundle.mkdir()
         for name in (binary_module.EXECUTABLE, "bright-star-catalog.tsv"):

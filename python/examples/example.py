@@ -33,7 +33,8 @@ with LostRunner() as lost:
     # 2. Run the star tracker on the same scene and score it against the truth.
     result = lost.run_generated(scene, camera, **stages)
     print("centroids found:", len(result.actual_centroids))
-    print("stars identified:", len(result.identified_stars))
+    print("stars identified:", len(result.identified_stars),
+          f"({result.star_id_comparison.num_incorrect} of them wrong)")
     print("estimated attitude:", result.attitude)
     print("attitude error (deg):", result.attitude_error_deg)
 
@@ -49,6 +50,8 @@ with LostRunner() as lost:
         max_workers=3,
         **stages,
     )
+    # Generated images know the truth, so wrong identifications can be counted.
     for noise, run in zip(noise_levels, runs):
-        print(f"noise {noise}: {len(run.identified_stars)} stars identified, "
-              f"error {run.attitude_error_deg} deg")
+        wrong = run.star_id_comparison.num_incorrect
+        print(f"noise {noise}: {len(run.identified_stars)} stars identified ({wrong} wrong), "
+              f"attitude error {run.attitude_error_deg} deg")
